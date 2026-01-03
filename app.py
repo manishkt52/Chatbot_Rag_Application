@@ -41,12 +41,14 @@ class HFRouterLLM(LLM):
         return "huggingface-router"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        response = self.client.text_generation(
-            prompt,
-            max_new_tokens=self.max_tokens,
+        response = self.client.chat.completions.create(
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=self.max_tokens,
             temperature=self.temperature,
         )
-        return response
+        return response.choices[0].message.content
 
 # ---------------- VECTOR STORE ---------------- #
 
@@ -62,10 +64,12 @@ vector_store = Chroma(
 # ---------------- LLM INIT ---------------- #
 
 hf_client = InferenceClient(
-    # model="meta-llama/Meta-Llama-3-8B-Instruct",
-    model="mistralai/Mistral-7B-Instruct-v0.3",
+    model="meta-llama/Meta-Llama-3-8B-Instruct",
     token=HF_TOKEN,
 )
+
+
+
 
 hf_hub_llm = HFRouterLLM(
     client=hf_client,
@@ -101,7 +105,7 @@ custom_prompt = PromptTemplate(
 rag_chain = RetrievalQA.from_chain_type(
     llm=hf_hub_llm,
     chain_type="stuff",
-    retriever=vector_store.as_retriever(top_k=3),
+    retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
     chain_type_kwargs={"prompt": custom_prompt}
 )
 
